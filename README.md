@@ -1,11 +1,9 @@
 瓦解核心：视界 | Brea:Horiz
 =======
 
-[//]: # (![clash]&#40;/nona_long.png&#41;)
+![clash](/horiz_long.png)
 
-[//]: # ()
-
-[//]: # ([click here to read English version]&#40;README_en.md&#41;)
+[click here to read English version](README_en.md)
 
 ---
 
