@@ -1,25 +1,108 @@
-
-Installation information
+瓦解核心：视界 | Brea:Horiz
 =======
 
-This template repository can be directly cloned to get you started with a new
-mod. Simply create a new repository cloned from this one, by following the
-instructions provided by [GitHub](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template).
+[//]: # (![clash]&#40;/nona_long.png&#41;)
 
-Once you have your clone, simply open the repository in the IDE of your choice. The usual recommendation for an IDE is either IntelliJ IDEA or Eclipse.
+[//]: # ()
 
-If at any point you are missing libraries in your IDE, or you've run into problems you can
-run `gradlew --refresh-dependencies` to refresh the local cache. `gradlew clean` to reset everything 
-{this does not affect your code} and then start the process again.
+[//]: # ([click here to read English version]&#40;README_en.md&#41;)
 
-Mapping Names:
-============
-By default, the MDK is configured to use the official mapping names from Mojang for methods and fields 
-in the Minecraft codebase. These names are covered by a specific license. All modders should be aware of this
-license. For the latest license text, refer to the mapping file itself, or the reference copy here:
-https://github.com/NeoForged/NeoForm/blob/main/Mojang.md
+---
 
-Additional Resources: 
-==========
-Community Documentation: https://docs.neoforged.net/  
-NeoForged Discord: https://discord.neoforged.net/
+# 概述
+
+Horiz Lib提供了一套简单易用的事件转发功能，允许游戏中和实体相关的事件被转发到实体保有的事件处理器处，
+从而避免繁琐的事件注册与动态增减。
+
+这一逻辑是：使用`AttachmentType`用于存储针对某一事件的处理器列表；
+监听与实体有关的事件，从事件中获取该`数据附加`并执行对应事件包含的处理器，例如：
+
+```java
+public static final Consumer<EntityEvent> consumer = event -> event.getEntity().getExistingData(Horiz.EVENT_DISTRIBUTE).ifPresent(d -> d.post(event));
+
+@SubscribeEvent
+public static void hurtIncome(LivingIncomingDamageEvent event) {
+    consumer.accept(event);
+}
+```
+
+这一过程可以使得针对单个实体的，可变的事件处理行为变得更加灵活而便捷。
+您可以使用这一过程实现类似“匠魂装备词条” “饰品效果提供” “实体技能系统”等功能。
+
+# 如何使用该系统？
+
+首先我们需要拿到对应的服务端`Entity`，如果您需要对各种实体进行全局初始化，
+您可以监听[`GatherEntityDistributeEvent`](src/main/java/com/phasetranscrystal/horiz/EventConsumer.java)事件，
+该事件转发自实体加入世界的最低优先级。
+
+在获取到目标实体后，您就可以使用
+
+```java
+public <T extends Event> void initEntity() {
+    Entity entity;//你获取到的实体
+    Class<T> eventClazz;//需要监听的事件的类
+    Consumer<T> eventConsumer;//该事件的处理器
+
+    //IdentEvent包含了事件的类与其对应的处理器，用于管理添加的监听
+    IdentEvent<T> ident = new IdentEvent(eventClazz, eventConsumer);
+
+    EntityEventDistribute distribute = entity.getData(Horiz.EVENT_DISTRIBUTE);
+
+    distribute.add(ident);//使用add方法添加一个新的监听
+    distribute.remove(ident);//使用remove方法清除存在的监听
+    distribute.removeByClass(eventClazz);//或者使用removeByClass清除某一事件的所有监听
+
+    //注：作用域为该实体分发器内的监听器，不影响游戏事件总线的注册与其它实体的分发器
+}
+```
+
+此外，您可以通过为事件添加标记来在需要时快速移除它们。
+
+想象一个文件夹——您可以往里面添加文件，也可以添加其它文件夹。标记的设计也是如此，
+在[`EntityEventDistribute`](src/main/java/com/phasetranscrystal/horiz/EntityEventDistribute.java)的`add`方法中，
+允许在`IdentEvent`后继续添加一组`ResourceLocation`作为监听器的标记路径，而在移除，即`removeMarked`方法处，可以根据这一路径快捷移除监听器。
+
+让我们用一个例子来展示：
+
+```java
+static {
+    ResourceLocation loc1, loc2, loc3, loc4;
+    IdentEvent<?> i1, i2, i3, i4, i5, i6, i7, i8, i9;
+    EntityEventDistribute distribute;
+
+    distribute.add(i1);
+    distribute.add(i2);
+    distribute.add(i3, loc1);
+    distribute.add(i4, loc1, loc2);
+    distribute.add(i5, loc1, loc2);
+    distribute.add(i6, loc1, loc3);
+    distribute.add(i7, loc1, loc3, loc4);
+    distribute.add(i8, loc2);
+    distribute.add(i9, loc2, loc3);
+    //这时候存储的结构大概是这样的：
+    //root
+    //|-(i1),(i2)
+    //|-loc1
+    //| |-(i3)
+    //| |-loc2
+    //| | \(i4),(i5)
+    //| \loc3
+    //|   |-(i6)
+    //|   \loc4
+    //|     \(i7)
+    //
+    
+    //假定下面的方法执行后distribute自动还原（实际上不会这样）
+}
+```
+
+# 贡献
+
+欢迎对Nonatomic模组进行贡献。你可以提交Issues来报告问题，或者Fork本项目来提交你的改进。
+
+# 开发者
+
+- **Mon-landis**：提供技术支持和开发。
+
+---
+
