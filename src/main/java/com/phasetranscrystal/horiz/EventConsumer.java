@@ -1,5 +1,6 @@
 package com.phasetranscrystal.horiz;
 
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.ICancellableEvent;
@@ -88,7 +89,9 @@ public class EventConsumer {
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void init(EntityJoinLevelEvent event) {
-        NeoForge.EVENT_BUS.post(new GatherEntityDistributeEvent(event.getEntity()));
+        if (!event.getLevel().isClientSide()) {
+            NeoForge.EVENT_BUS.post(new GatherEntityDistributeEvent(event.getEntity()));
+        }
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
@@ -140,6 +143,7 @@ public class EventConsumer {
         if (!event.getSource().isDirect() && event.getSource().getDirectEntity() != null) {
             NeoForge.EVENT_BUS.post(new EntityKillEvent.Post(event.getSource().getDirectEntity(), event, true));
         }
+        event.setCanceled(false);//不允许阻止事件
     }
 
     /**

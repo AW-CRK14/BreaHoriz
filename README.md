@@ -31,11 +31,7 @@ public static void hurtIncome(LivingIncomingDamageEvent event) {
 
 # 如何使用该系统？
 
-首先我们需要拿到对应的服务端`Entity`，如果您需要对各种实体进行全局初始化，
-您可以监听[`GatherEntityDistributeEvent`](src/main/java/com/phasetranscrystal/horiz/EventConsumer.java)事件，
-该事件转发自实体加入世界的最低优先级。
-
-在获取到目标实体后，您就可以使用
+首先我们需要拿到对应的服务端`Entity`。在获取到目标实体后，您就可以使用：
 
 ```java
 public <T extends Event> void initEntity() {
@@ -85,16 +81,56 @@ static {
     //|-loc1
     //| |-(i3)
     //| |-loc2
-    //| | \(i4),(i5)
+    //| |  \(i4),(i5)
     //| \loc3
     //|   |-(i6)
     //|   \loc4
     //|     \(i7)
-    //
-    
+    //\loc2
+    //  |-(i8)
+    //  \loc3
+    //    \(i9)
+
     //假定下面的方法执行后distribute自动还原（实际上不会这样）
+    distribute.removeMarked(loc1, loc3, loc4); //移除i7
+    distribute.removeMarked(loc1, loc3); //移除i6,i7
+    distribute.removeMarked(loc1, loc2); //移除i4,i5
+    distribute.removeMarked(loc1); //移除i3,i4,i5,i6,i7
+    distribute.removeMarkedSelf(loc1); //移除i3，不移除子路径下的内容
+    distribute.removeMarked(loc2); //移除i8,i9
 }
 ```
+
+# 添加更多事件转发
+
+正如我们在最开始提到的，`EventConsumer#consumer`常量内完成了转发事件的逻辑。您只需要监听已有事件，并使用`Consumer#accept`方法执行即可。
+这一过程简化的是获取实体数据附加的过程。如果您的事件不是`EntityEvent`，您可能需要自己完成相应逻辑。
+
+# 其它问题
+
+## 我应该在何时初始化转发的事件监听器？
+
+您可以在实体创建时直接初始化。如果您无法做到或需要对各种实体进行全局初始化，
+您可以监听[`GatherEntityDistributeEvent`](src/main/java/com/phasetranscrystal/horiz/EventConsumer.java)事件，
+该事件转发自实体加入世界的最低优先级。
+
+注意：由于该数据附加没有配置`Codec`，转发中的事件不会被保存——这意味着，当实体重新加载或传送到其它维度时，您需要重新初始化事件。
+因此我们更推荐使用`GatherEntityDistributeEvent`。
+
+## 我想处理实体对目标造成攻击/实体杀死目标等情况，我应该怎么办？
+
+库提供了伤害事件和击杀事件的转发——您可以在[`EventConsumer类的底部`](src/main/java/com/phasetranscrystal/horiz/EventConsumer.java)
+找到其转发对应的事件。
+
+## 模组为已经为哪些事件提供了转发？
+
+您可以在[`EventConsumer#bootstrapConsumer()`](src/main/java/com/phasetranscrystal/horiz/EventConsumer.java)
+下看到模组已经提供的转发。
+
+## 如果同一个事件被不同模组转发，监听器会不会被执行多次？
+
+不会。 在[`EntityEventDistribute`](src/main/java/com/phasetranscrystal/horiz/EntityEventDistribute.java)
+类中保有一个记录事件哈希值的表，如果同一个事件的相同实例被多次转发，在第一次之后的转发均会被过滤。
 
 # 贡献
 

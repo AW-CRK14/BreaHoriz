@@ -14,6 +14,7 @@ public class Horiz
 
     public Horiz(IEventBus bus){
         REGISTER.register(bus);
+        EventConsumer.bootstrapConsumer();
     }
 
 
